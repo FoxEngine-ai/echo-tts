@@ -4,6 +4,8 @@ A multi-speaker text-to-speech model with speaker reference conditioning. See th
 
 **Model:** [jordand/echo-tts-base](https://huggingface.co/jordand/echo-tts-base) | **Demo:** [echo-tts-preview](https://huggingface.co/spaces/jordand/echo-tts-preview)
 
+This work was made possible by the TPU Research Cloud (TRC).
+
 ## Responsible Use
 
 Don't use this model to:
