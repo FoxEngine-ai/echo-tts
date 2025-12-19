@@ -4,13 +4,13 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "echo-tts"
-version = "0.1.0"
+version = "0.1.1"
 description = "Echo TTS - Text-to-Speech synthesis with voice cloning"
 readme = "README.md"
 license = {text = "Apache-2.0"}
 requires-python = ">=3.10"
 authors = [
-    {name = "FoxEngine AI"}
+    {name = "Jordan Darefsky"}
 ]
 keywords = ["tts", "text-to-speech", "voice-cloning", "audio", "speech-synthesis"]
 classifiers = [
