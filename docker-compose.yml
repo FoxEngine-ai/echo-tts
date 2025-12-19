@@ -1,0 +1,22 @@
+services:
+  echo-tts:
+    build: .
+    runtime: nvidia
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+    volumes:
+      - ./output:/app/output
+      - ./audio_prompts:/app/audio_prompts
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+
+  publish:
+    build: .
+    volumes:
+      - ~/.pypirc:/root/.pypirc:ro
+    entrypoint: ["python", "-m", "twine", "upload", "dist/*"]
