@@ -2,6 +2,7 @@ from dataclasses import dataclass
 from functools import partial
 from importlib import resources
 import json
+import os
 from typing import Callable, List, Optional, Tuple, Union
 from pathlib import Path
 
@@ -14,6 +15,21 @@ from echo_tts.autoencoder import DAC, build_ae
 from echo_tts.model import EchoDiT
 
 
+def _resolve_model_path(
+    repo_id: str,
+    filename: str,
+    model_path: Optional[str] = None,
+    token: Optional[str] = None,
+) -> str:
+    """Resolve model file path - local if model_path provided, else download from HF."""
+    if model_path is not None:
+        local_path = os.path.join(model_path, repo_id, filename)
+        if os.path.exists(local_path):
+            return local_path
+        raise FileNotFoundError(f"Model file not found: {local_path}")
+    return hf_hub_download(repo_id, filename, token=token)
+
+
 def load_model_from_hf(
     repo_id: str = "jordand/echo-tts-base",
     device: str = "cuda",
@@ -21,6 +37,7 @@ def load_model_from_hf(
     compile: bool = False,
     token: Optional[str] = None,
     delete_blockwise_modules: bool = False,
+    model_path: Optional[str] = None,
 ) -> EchoDiT:
     with torch.device("meta"):
         model = EchoDiT(
@@ -32,7 +49,7 @@ def load_model_from_hf(
             speaker_num_heads=10, speaker_intermediate_size=3328,
             timestep_embed_size=512, adaln_rank=256,
         )
-    w_path = hf_hub_download(repo_id, "pytorch_model.safetensors", token=token)
+    w_path = _resolve_model_path(repo_id, "pytorch_model.safetensors", model_path, token)
     state = st.load_file(w_path, device="cpu")
 
     if delete_blockwise_modules:
@@ -71,11 +88,12 @@ def load_fish_ae_from_hf(
     dtype: Optional[torch.dtype] = torch.float32,
     compile: bool = False,
     token: Optional[str] = None,
+    model_path: Optional[str] = None,
 ) -> DAC:
     with torch.device("meta"):
         fish_ae = build_ae()
 
-    w_path = hf_hub_download(repo_id, "pytorch_model.safetensors", token=token)
+    w_path = _resolve_model_path(repo_id, "pytorch_model.safetensors", model_path, token)
     if dtype is not None and dtype != torch.float32:
         state = st.load_file(w_path, device="cpu")
         state = {k: v.to(dtype=dtype) for k, v in state.items()}
@@ -113,8 +131,9 @@ def load_pca_state_from_hf(
     device: str = "cuda",
     filename: str = "pca_state.safetensors",
     token: Optional[str] = None,
+    model_path: Optional[str] = None,
 ) -> PCAState:
-    p_path = hf_hub_download(repo_id, filename, token=token)
+    p_path = _resolve_model_path(repo_id, filename, model_path, token)
     t = st.load_file(p_path, device=device)
     return PCAState(
         pca_components=t["pca_components"],
@@ -472,7 +491,7 @@ def get_sampler_presets() -> dict:
 
 
 class EchoTTS:
-    """High-level TTS interface that downloads models from HuggingFace."""
+    """High-level TTS interface that downloads models from HuggingFace or loads from local path."""
     
     def __init__(
         self,
@@ -482,7 +501,23 @@ class EchoTTS:
         model_repo: str = "jordand/echo-tts-base",
         ae_repo: str = "jordand/fish-s1-dac-min",
         token: Optional[str] = None,
+        model_path: Optional[str] = None,
     ):
+        """
+        Initialize EchoTTS.
+        
+        Args:
+            device: Device to run on (cuda/cpu)
+            dtype: Model dtype
+            compile: Whether to use torch.compile
+            model_repo: HuggingFace repo for main model
+            ae_repo: HuggingFace repo for autoencoder
+            token: HuggingFace token for private repos
+            model_path: Local path to models. If provided, looks for:
+                - {model_path}/{model_repo}/pytorch_model.safetensors
+                - {model_path}/{model_repo}/pca_state.safetensors
+                - {model_path}/{ae_repo}/pytorch_model.safetensors
+        """
         self.device = device
         self.dtype = dtype
         
@@ -493,17 +528,20 @@ class EchoTTS:
             compile=compile,
             token=token,
             delete_blockwise_modules=True,
+            model_path=model_path,
         )
         self.fish_ae = load_fish_ae_from_hf(
             repo_id=ae_repo,
             device=device,
             compile=compile,
             token=token,
+            model_path=model_path,
         )
         self.pca_state = load_pca_state_from_hf(
             repo_id=model_repo,
             device=device,
             token=token,
+            model_path=model_path,
         )
         self.presets = get_sampler_presets()
     

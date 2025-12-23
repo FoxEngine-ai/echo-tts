@@ -15,6 +15,10 @@ def main():
     parser.add_argument("--device", default="cuda", help="Device (cuda/cpu)")
     parser.add_argument("--steps", type=int, default=40, help="Number of diffusion steps")
     parser.add_argument("--compile", action="store_true", help="Use torch.compile for faster inference")
+    parser.add_argument(
+        "--model-path",
+        help="Local path to models (expects {path}/jordand/echo-tts-base/ and {path}/jordand/fish-s1-dac-min/)"
+    )
     
     args = parser.parse_args()
     
@@ -25,7 +29,9 @@ def main():
     from echo_tts import EchoTTS
     
     print(f"Loading models on {args.device}...")
-    tts = EchoTTS(device=args.device, compile=args.compile)
+    if args.model_path:
+        print(f"Using local models from {args.model_path}")
+    tts = EchoTTS(device=args.device, compile=args.compile, model_path=args.model_path)
     
     print(f"Synthesizing: {args.text[:50]}...")
     audio, sr = tts.synthesize(
