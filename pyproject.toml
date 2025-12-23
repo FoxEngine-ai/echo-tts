@@ -10,7 +10,8 @@ readme = "README.md"
 license = {text = "Apache-2.0"}
 requires-python = ">=3.10"
 authors = [
-    {name = "Jordan Darefsky"}
+    {name = "Jordan Darefsky"},
+    {name = "FoxEngine LTD"}
 ]
 keywords = ["tts", "text-to-speech", "voice-cloning", "audio", "speech-synthesis"]
 classifiers = [

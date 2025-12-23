@@ -1,16 +1,17 @@
-FROM nvidia/cuda:12.4.1-runtime-ubuntu22.04
+FROM nvidia/cuda:13.1.0-devel-ubuntu24.04
 
 ENV DEBIAN_FRONTEND=noninteractive
 ENV PYTHONUNBUFFERED=1
 
 RUN apt-get update && apt-get install -y \
-    python3.11 \
-    python3.11-venv \
+    python3 \
+    python3-venv \
+    python3-pip \
     libsndfile1 \
     ffmpeg \
     && rm -rf /var/lib/apt/lists/*
 
-RUN python3.11 -m venv /opt/venv
+RUN python3 -m venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
 
 WORKDIR /app

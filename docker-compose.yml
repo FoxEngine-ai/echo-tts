@@ -1,5 +1,6 @@
 services:
   echo-tts:
+    image: echo-tts
     build: .
     runtime: nvidia
     environment:
@@ -16,7 +17,7 @@ services:
               capabilities: [gpu]
 
   publish:
-    build: .
+    image: echo-tts
     volumes:
       - ~/.pypirc:/root/.pypirc:ro
     entrypoint: ["python", "-m", "twine", "upload", "dist/*"]
