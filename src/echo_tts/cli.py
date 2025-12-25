@@ -17,7 +17,15 @@ def main():
     parser.add_argument("--compile", action="store_true", help="Use torch.compile for faster inference")
     parser.add_argument(
         "--model-path",
-        help="Local path to models (expects {path}/jordand/echo-tts-base/ and {path}/jordand/fish-s1-dac-min/)"
+        help="Base path for models (combined with repo names or specific paths)"
+    )
+    parser.add_argument(
+        "--echo-path",
+        help="Path to echo model dir (full path, or relative to --model-path if given)"
+    )
+    parser.add_argument(
+        "--s1dac-path",
+        help="Path to s1dac model dir (full path, or relative to --model-path if given)"
     )
     
     args = parser.parse_args()
@@ -29,9 +37,15 @@ def main():
     from echo_tts import EchoTTS
     
     print(f"Loading models on {args.device}...")
-    if args.model_path:
-        print(f"Using local models from {args.model_path}")
-    tts = EchoTTS(device=args.device, compile=args.compile, model_path=args.model_path)
+    if args.model_path or args.echo_path or args.s1dac_path:
+        print(f"Using local models: model_path={args.model_path}, echo_path={args.echo_path}, s1dac_path={args.s1dac_path}")
+    tts = EchoTTS(
+        device=args.device,
+        compile=args.compile,
+        model_path=args.model_path,
+        echo_path=args.echo_path,
+        s1dac_path=args.s1dac_path,
+    )
     
     print(f"Synthesizing: {args.text[:50]}...")
     audio, sr = tts.synthesize(

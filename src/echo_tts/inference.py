@@ -19,14 +19,33 @@ def _resolve_model_path(
     repo_id: str,
     filename: str,
     model_path: Optional[str] = None,
+    specific_path: Optional[str] = None,
     token: Optional[str] = None,
 ) -> str:
-    """Resolve model file path - local if model_path provided, else download from HF."""
+    """
+    Resolve model file path.
+    
+    Priority:
+    1. model_path + specific_path (if both given)
+    2. specific_path alone (full path to model dir)
+    3. model_path + repo_id (base path + HF repo structure)
+    4. Download from HuggingFace
+    """
+    if specific_path is not None:
+        if model_path is not None:
+            local_path = os.path.join(model_path, specific_path, filename)
+        else:
+            local_path = os.path.join(specific_path, filename)
+        if os.path.exists(local_path):
+            return local_path
+        raise FileNotFoundError(f"Model file not found: {local_path}")
+    
     if model_path is not None:
         local_path = os.path.join(model_path, repo_id, filename)
         if os.path.exists(local_path):
             return local_path
         raise FileNotFoundError(f"Model file not found: {local_path}")
+    
     return hf_hub_download(repo_id, filename, token=token)
 
 
@@ -38,6 +57,7 @@ def load_model_from_hf(
     token: Optional[str] = None,
     delete_blockwise_modules: bool = False,
     model_path: Optional[str] = None,
+    echo_path: Optional[str] = None,
 ) -> EchoDiT:
     with torch.device("meta"):
         model = EchoDiT(
@@ -49,7 +69,7 @@ def load_model_from_hf(
             speaker_num_heads=10, speaker_intermediate_size=3328,
             timestep_embed_size=512, adaln_rank=256,
         )
-    w_path = _resolve_model_path(repo_id, "pytorch_model.safetensors", model_path, token)
+    w_path = _resolve_model_path(repo_id, "pytorch_model.safetensors", model_path, echo_path, token)
     state = st.load_file(w_path, device="cpu")
 
     if delete_blockwise_modules:
@@ -89,11 +109,12 @@ def load_fish_ae_from_hf(
     compile: bool = False,
     token: Optional[str] = None,
     model_path: Optional[str] = None,
+    s1dac_path: Optional[str] = None,
 ) -> DAC:
     with torch.device("meta"):
         fish_ae = build_ae()
 
-    w_path = _resolve_model_path(repo_id, "pytorch_model.safetensors", model_path, token)
+    w_path = _resolve_model_path(repo_id, "pytorch_model.safetensors", model_path, s1dac_path, token)
     if dtype is not None and dtype != torch.float32:
         state = st.load_file(w_path, device="cpu")
         state = {k: v.to(dtype=dtype) for k, v in state.items()}
@@ -132,8 +153,9 @@ def load_pca_state_from_hf(
     filename: str = "pca_state.safetensors",
     token: Optional[str] = None,
     model_path: Optional[str] = None,
+    echo_path: Optional[str] = None,
 ) -> PCAState:
-    p_path = _resolve_model_path(repo_id, filename, model_path, token)
+    p_path = _resolve_model_path(repo_id, filename, model_path, echo_path, token)
     t = st.load_file(p_path, device=device)
     return PCAState(
         pca_components=t["pca_components"],
@@ -502,6 +524,8 @@ class EchoTTS:
         ae_repo: str = "jordand/fish-s1-dac-min",
         token: Optional[str] = None,
         model_path: Optional[str] = None,
+        echo_path: Optional[str] = None,
+        s1dac_path: Optional[str] = None,
     ):
         """
         Initialize EchoTTS.
@@ -513,10 +537,15 @@ class EchoTTS:
             model_repo: HuggingFace repo for main model
             ae_repo: HuggingFace repo for autoencoder
             token: HuggingFace token for private repos
-            model_path: Local path to models. If provided, looks for:
-                - {model_path}/{model_repo}/pytorch_model.safetensors
-                - {model_path}/{model_repo}/pca_state.safetensors
-                - {model_path}/{ae_repo}/pytorch_model.safetensors
+            model_path: Base path for models (combined with repo names or specific paths)
+            echo_path: Specific path to echo model dir. If model_path also given, uses model_path/echo_path
+            s1dac_path: Specific path to s1dac model dir. If model_path also given, uses model_path/s1dac_path
+            
+        Path resolution priority:
+            1. model_path + echo_path/s1dac_path (if both given)
+            2. echo_path/s1dac_path alone (full path)
+            3. model_path + repo_id (HF structure)
+            4. Download from HuggingFace
         """
         self.device = device
         self.dtype = dtype
@@ -529,6 +558,7 @@ class EchoTTS:
             token=token,
             delete_blockwise_modules=True,
             model_path=model_path,
+            echo_path=echo_path,
         )
         self.fish_ae = load_fish_ae_from_hf(
             repo_id=ae_repo,
@@ -536,12 +566,14 @@ class EchoTTS:
             compile=compile,
             token=token,
             model_path=model_path,
+            s1dac_path=s1dac_path,
         )
         self.pca_state = load_pca_state_from_hf(
             repo_id=model_repo,
             device=device,
             token=token,
             model_path=model_path,
+            echo_path=echo_path,
         )
         self.presets = get_sampler_presets()
     

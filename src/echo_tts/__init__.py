@@ -13,7 +13,7 @@ from echo_tts.inference import (
     PCAState,
 )
 
-__version__ = "0.1.1"
+__version__ = "0.1.3"
 __all__ = [
     "EchoTTS",
     "EchoDiT",

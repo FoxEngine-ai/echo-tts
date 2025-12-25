@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "echo-tts"
-version = "0.1.1"
+version = "0.1.3"
 description = "Echo TTS - Text-to-Speech synthesis with voice cloning"
 readme = "README.md"
 license = {text = "Apache-2.0"}
